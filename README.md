@@ -8,4 +8,5 @@ This repository contains all projects and assignments that are done from Bingham
 
 **Georgia Technology of Institution**
 **Image as function**
+
 Description: This assignment is tasked to get familar with the system (OpenCV), and also to undertand the basic of computer image processing such as: color plane, Arithmetic and operations, Gaussian noise, and Grayscale.

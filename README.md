@@ -16,7 +16,7 @@ This course provides an introduction to computer vision including fundamentals o
 The focus of the course is to develop the intuitions and mathematics of the methods in lecture, and then to learn about the difference between theory and practice in the problem sets.
 
 ### Assignments ###
-**1. Image as function**
+#### 1. Image as function ####
 
 **Description**
 This problem set is really just to make sure you can load an image, manipulate the values, produce some output, and submit the code along with the report.  Note that autograded problems will be marked with a (*).
@@ -29,9 +29,10 @@ It is expected that you have set up your environment properly. All problem sets 
 - Apply linear algebra concepts to manipulate image pixel values.
 - Perform basic statistical operations in arrays.
 - Introduce the concept of noise in an image.
+
 **Report:**./GT_course/image_as_function/ps1_report.pdf
 
-**2. Detecting Traffic Signs and Lights**
+#### 2. Detecting Traffic Signs and Lights ####
 
 **Description**
 Problem Set 2 is aimed at introducing basic building blocks of image processing.  Key areas that we wish to see you implement are: loading and manipulating images, producing some valued output of images, and comprehension of the structural and semantic aspects of what makes an image.  Relevant Modules are 1-2.

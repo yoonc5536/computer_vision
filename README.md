@@ -1,4 +1,4 @@
-# Academic project:
+# Academic Projects
 
 This repository contains all projects and assignments that are done from Binghamton University and Georgia Technology of Institution. 
 

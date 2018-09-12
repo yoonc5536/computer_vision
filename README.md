@@ -5,6 +5,7 @@ This repository contains all projects and assignments that are done from Bingham
 ### Binghamton University
 **2015 Undergraduate summer research internship: Real-time Robust Person Detection and Tracking**
 - This project was focusing on sensor fusion with the depth sensor to improve facial detection efficiency.
+- folder: "2015 summer intern"
 
 ### Georgia Technology of Institution
 **Image as function**

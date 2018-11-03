@@ -1,4 +1,4 @@
-### Georgia Technology of Institution
+### Georgia Technology of Institution: CS6476
 
 Class details: https://www.omscs.gatech.edu/cs-6476-computer-vision
 

@@ -61,3 +61,24 @@ features, insert images within images, and assemble a video from a sequence of f
 - Understand how video can be extracted in sequences of images, and replace specific areas of each
 image with different content.
 - Assemble a video from a sequence of images.
+
+#### 4. Motion Detection ####
+**Description**
+Problem Set 4 introduces optic flow as the problem of computing a dense flow field where a flow field is a vector field <u(x,y), v(x,y)>. We discussed a standard method — Hierarchical Lucas and Kanade — for computing these vectors. This assignment will have you implement methods from simpler operations in order to understand more about array manipulation and the math behind them. We would like you to focus on movement in images, and frame interpolation, using concepts that you will learn from modules 6A-6B: Optic Flow.
+**Learning Objectives**
+- Implement the Lucas-Kanade algorithm based on the concepts learned from the lectures.
+- Learn how pixel movement can be seen as flow vectors.
+- Create image resizing functions with interpolation.
+- Implement the Hierarchical Lucas-Kanade algorithm.
+- Understand the benefits of using a Pyramidal approach.
+- Understand the theory of action recognition.
+
+#### 5. Object Tracking and Pedestrian Detection ####
+**Description**
+In this problem set you are going to implement tracking methods for image sequences and videos. The main algorithms you will be using are the Kalman and Particle Filters.
+Learning Objectives
+- Identify which image processing methods work best in order to locate an object in a scene.
+- Learn to how object tracking in images works.
+- Explore different methods to build a tracking algorithm that relies on measurements and a prior
+state.
+- Create methods that can track an object when occlusions are present in the scene.

@@ -53,6 +53,7 @@ modules 3A-3D and 4A-4C: Projective geometry, Corner detection, Perspective imag
 respectively.
 Additionally, you will also learn how to read from a video, process each video frame by identifying important
 features, insert images within images, and assemble a video from a sequence of frames.
+
 **Learning Objectives**
 - Find markers using circle and corner detection, convolution, and / or pattern recognition.
 - Learn how projective geometry can be used to transform a sample image from one plane to another.
@@ -65,6 +66,7 @@ image with different content.
 #### 4. Motion Detection ####
 **Description**
 Problem Set 4 introduces optic flow as the problem of computing a dense flow field where a flow field is a vector field <u(x,y), v(x,y)>. We discussed a standard method — Hierarchical Lucas and Kanade — for computing these vectors. This assignment will have you implement methods from simpler operations in order to understand more about array manipulation and the math behind them. We would like you to focus on movement in images, and frame interpolation, using concepts that you will learn from modules 6A-6B: Optic Flow.
+
 **Learning Objectives**
 - Implement the Lucas-Kanade algorithm based on the concepts learned from the lectures.
 - Learn how pixel movement can be seen as flow vectors.
@@ -76,7 +78,8 @@ Problem Set 4 introduces optic flow as the problem of computing a dense flow fie
 #### 5. Object Tracking and Pedestrian Detection ####
 **Description**
 In this problem set you are going to implement tracking methods for image sequences and videos. The main algorithms you will be using are the Kalman and Particle Filters.
-Learning Objectives
+
+**Learning Objectives**
 - Identify which image processing methods work best in order to locate an object in a scene.
 - Learn to how object tracking in images works.
 - Explore different methods to build a tracking algorithm that relies on measurements and a prior

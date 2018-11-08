@@ -20,11 +20,19 @@ def load_images(folder, size=(32, 32)):
                              (row:observations, col:features) (float).
             y (numpy.array): 1D array of labels (int).
     """
+    ext = ".png"
+    imgs = []
+    imagesFiles = [f for f in os.listdir(folder) if f.endswith(ext)]
+    labels = []
 
-    images_files = [f for f in os.listdir(folder) if f.endswith(".png")]
-
-    raise NotImplementedError
-
+    for f in imagesFiles:
+        imgs.append(np.array(cv2.imread(os.path.join(folder, f), 0)))
+        imgNum = int(f.split('.')[0].split('subject')[1])
+        labels.append(imgNum)
+    imgs = [np.array(cv2.resize(x, size)).flatten() for x in imgs]
+    labels = np.asarray(labels, dtype=int)
+    imgs = np.asarray(imgs)
+    return imgs,labels
 
 def split_dataset(X, y, p):
     """Split dataset into training and test sets.
@@ -62,9 +70,7 @@ def get_mean_face(x):
     Returns:
         numpy.array: Mean face.
     """
-
-    raise NotImplementedError
-
+    return np.mean(x,axis=0)
 
 def pca(X, k):
     """PCA Reduction method.

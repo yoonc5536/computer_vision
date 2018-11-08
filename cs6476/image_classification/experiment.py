@@ -2,7 +2,7 @@
 import cv2
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import math
 
 import ps6
@@ -64,8 +64,8 @@ def visualize_mean_face(x_mean, size, new_dims):
     Returns:
         numpy.array: Mean face uint8 2D array.
     """
-    return NotImplementedError
-
+    mean = x_mean.reshape(size).astype(np.uint8)
+    return cv2.resize(mean, new_dims, interpolation = cv2.INTER_CUBIC)
 
 def part_1a_1b():
 

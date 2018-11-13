@@ -1,0 +1,61 @@
+{
+    "tests": [
+        {
+            "output": {
+                "passfail": "failed"
+            },
+            "traceback": "Traceback (most recent call last):\n  File \"/home/vmuser_xehulrba/verify_student_output.py\", line 32, in handler\n    queue.put((None, testcase(obj)))\n  File \"/home/vmuser_xehulrba/CVResult.py\", line 29, in func_wrapper\n    ans = func(self)\n  File \"run.py\", line 223, in test_evaluate\n    result = test.evaluate()\n  File \"/home/vmuser_xehulrba/workspace/ps6.py\", line 162, in evaluate\n    raise NotImplementedError\nNotImplementedError\n",
+            "description": "Testing Boosting.evaluate (10 points)"
+        },
+        {
+            "output": {
+                "passfail": "failed"
+            },
+            "traceback": "Traceback (most recent call last):\n  File \"/home/vmuser_xehulrba/verify_student_output.py\", line 32, in handler\n    queue.put((None, testcase(obj)))\n  File \"/home/vmuser_xehulrba/CVResult.py\", line 29, in func_wrapper\n    ans = func(self)\n  File \"run.py\", line 181, in test_predict\n    y_pred = test.predict(x_data)\n  File \"/home/vmuser_xehulrba/workspace/ps6.py\", line 176, in predict\n    raise NotImplementedError\nNotImplementedError\n",
+            "description": "Testing Boosting.predict (10 points)"
+        },
+        {
+            "output": {
+                "passfail": "failed"
+            },
+            "traceback": "Traceback (most recent call last):\n  File \"/home/vmuser_xehulrba/verify_student_output.py\", line 32, in handler\n    queue.put((None, testcase(obj)))\n  File \"/home/vmuser_xehulrba/CVResult.py\", line 29, in func_wrapper\n    ans = func(self)\n  File \"run.py\", line 326, in test_HaarFeature_evaluate\n    result = hf.evaluate(integral_image)\n  File \"/home/vmuser_xehulrba/workspace/ps6.py\", line 331, in evaluate\n    raise NotImplementedError\nNotImplementedError\n",
+            "description": "Testing HaarFeature.evaluate (25 points)"
+        },
+        {
+            "output": {
+                "passfail": "failed"
+            },
+            "traceback": "Traceback (most recent call last):\n  File \"/home/vmuser_xehulrba/verify_student_output.py\", line 32, in handler\n    queue.put((None, testcase(obj)))\n  File \"/home/vmuser_xehulrba/CVResult.py\", line 29, in func_wrapper\n    ans = func(self)\n  File \"run.py\", line 297, in test_integral_images\n    result = ps6.convert_images_to_integral_images([test_image])\n  File \"/home/vmuser_xehulrba/workspace/ps6.py\", line 344, in convert_images_to_integral_images\n    raise NotImplementedError\nNotImplementedError\n",
+            "description": "Testing convert_images_to_integral_images (10 points)"
+        },
+        {
+            "output": {
+                "passfail": "failed"
+            },
+            "traceback": "Traceback (most recent call last):\n  File \"/home/vmuser_xehulrba/verify_student_output.py\", line 32, in handler\n    queue.put((None, testcase(obj)))\n  File \"/home/vmuser_xehulrba/CVResult.py\", line 29, in func_wrapper\n    ans = func(self)\n  File \"run.py\", line 269, in test_preview\n    result = hf.preview(img_shape)\n  File \"/home/vmuser_xehulrba/workspace/ps6.py\", line 290, in preview\n    X = self._create_two_vertical_feature(shape)\n  File \"/home/vmuser_xehulrba/workspace/ps6.py\", line 224, in _create_two_vertical_feature\n    raise NotImplementedError\nNotImplementedError\n",
+            "description": "Testing HaarFeature.preview (10 points)"
+        },
+        {
+            "output": {
+                "passfail": "passed"
+            },
+            "traceback": "",
+            "description": "Testing average face (10 points)"
+        },
+        {
+            "output": {
+                "passfail": "passed"
+            },
+            "traceback": "",
+            "description": "Testing pca eigenvalues (15 points)"
+        },
+        {
+            "output": {
+                "passfail": "passed"
+            },
+            "traceback": "",
+            "description": "Testing split_dataset (10 points)"
+        }
+    ],
+    "unauthorized_lib_calls": []
+}

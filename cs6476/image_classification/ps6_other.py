@@ -5,6 +5,10 @@ import os
 
 from helper_classes import WeakClassifier, VJ_Classifier
 
+def showImage(img):
+  cv2.imshow('image', img)
+  cv2.waitKey(0)
+  cv2.destroyAllWindows()
 
 # assignment code
 def load_images(folder, size=(32, 32)):
@@ -20,19 +24,27 @@ def load_images(folder, size=(32, 32)):
                              (row:observations, col:features) (float).
             y (numpy.array): 1D array of labels (int).
     """
-    ext = ".png"
-    imgs = []
-    imagesFiles = [f for f in os.listdir(folder) if f.endswith(ext)]
-    labels = []
 
-    for f in imagesFiles:
-        imgs.append(np.array(cv2.imread(os.path.join(folder, f), 0)))
-        imgNum = int(f.split('.')[0].split('subject')[1])
-        labels.append(imgNum)
-    imgs = [np.array(cv2.resize(x, size)).flatten() for x in imgs]
-    labels = np.asarray(labels, dtype=int)
-    imgs = np.asarray(imgs)
-    return imgs,labels
+    images_files = [f for f in os.listdir(folder) if f.endswith(".png")]
+
+    X = []
+    y = []
+
+    for image_file in images_files:
+        img = cv2.imread(os.path.join(folder, image_file), 0)
+        small_image = cv2.resize(img, size)
+        small_image = small_image.flatten()
+        X.append(small_image)
+
+        label = image_file[image_file.find('.') + 1 : image_file.rfind('.')]
+        y.append(label)
+
+    X = np.array(X, np.uint8)
+    y = np.array(y, np.int8)
+
+    return (X, y)
+
+
 
 def split_dataset(X, y, p):
     """Split dataset into training and test sets.
@@ -55,17 +67,32 @@ def split_dataset(X, y, p):
             Xtest (numpy.array): Test data test 2D array.
             ytest (numpy.array): Test data labels.
     """
-    imgIdx = np.arange(X.shape[0])
-    np.random.shuffle(imgIdx)
-    trainIdx = imgIdx[0:int(len(imgIdx)*p)]
-    testIdx = imgIdx[int(len(imgIdx)*p):len(imgIdx)]
 
-    Xtrain = X[trainIdx]
-    Ytrain = y[trainIdx]
-    Xtest = X[testIdx]
-    Ytest = y[testIdx]
 
-    return Xtrain,Ytrain,Xtest,Ytest
+
+
+    
+    seed = np.arange(X.shape[0])
+
+    np.random.shuffle(seed)
+
+    midpoint = int(seed.shape[0] * p)
+
+    train_seed = seed[0:midpoint]
+    test_seed = seed[midpoint:seed.shape[0]]
+
+    Xtrain = X[train_seed]
+    Ytrain = y[train_seed]
+
+    Xtest = X[test_seed]
+    Ytest = y[test_seed]
+
+    return (Xtrain, Ytrain, Xtest, Ytest)
+    
+
+
+    raise NotImplementedError
+
 
 def get_mean_face(x):
     """Return the mean face.
@@ -78,7 +105,12 @@ def get_mean_face(x):
     Returns:
         numpy.array: Mean face.
     """
-    return np.mean(x,axis=0)
+    mean_face = np.mean(x, axis=0)
+
+    
+    return mean_face
+
+
 def pca(X, k):
     """PCA Reduction method.
 
@@ -98,17 +130,23 @@ def pca(X, k):
     """
 
     mean_face = get_mean_face(X)
+
     X = X - mean_face
+
     C = np.dot(X.T, X)
-    w,v = np.linalg.eig(C)
-    idx = w.argsort()[::-1]   
-    w = w[idx]
-    v = v[:,idx]
 
-    v = v[:,0:k]
-    w = w[0:k]
-    return v,w 
+    eig_val, eig_vec = np.linalg.eig(C)
+    
 
+    idx = eig_val.argsort()[::-1]   
+    eig_val = eig_val[idx]
+    eig_vec = eig_vec[:,idx]
+
+
+    return (eig_vec[:, 0:k], eig_val[0:k])
+
+    
+    
 class Boosting:
     """Boosting classifier.
 
@@ -145,34 +183,32 @@ class Boosting:
 
     def train(self):
         """Implement the for loop shown in the problem set instructions."""
-        # Adaboosting algorithm
+
         for i in range(0, self.num_iterations):
-            #a) renormalize the weights
             self.weights /= self.weights.sum()
+            wk_clf = WeakClassifier(self.Xtrain, self.ytrain, self.weights)
+            wk_clf.train()
+            wk_results = [wk_clf.predict(x) for x in self.Xtrain]
 
-            #b) instantiate the weak classifier
-            h = WeakClassifier(self.Xtrain, self.ytrain, self.weights)
-            h.train()
-            hResult = [h.predict(i) for i in self.Xtrain]
-            self.weakClassifiers.append(h)
+            eJ = 0.0
 
-            #c) find ej for weights where h(xi) != y(i)
-            ej = 0.0
-            for i in range(0,len(self.ytrain)):
-                if(hResult[i] != self.ytrain[i]):
-                    ej += self.weights[i]
-            
-            #d) calculate aj
-            aj = np.log((1-ej)/self.eps) * 0.5
-            self.alphas.append(aj)
+            for i in range(0, len(self.ytrain)):
+                if(self.ytrain[i] != wk_results[i]):
+                    eJ += self.weights[i]
 
-            #e) if ej is greater than the threshold self.eps -> update weights, else stop the loop
-            if(ej > self.eps):
-                for i in range(0,len(self.ytrain)):
-                    if(hResult[i] != self.ytrain[i]):
-                        self.weights[i] = self.weights[i] * np.exp(-self.ytrain[i]*hResult[i]*aj)
+            aJ = .5 * np.log((1-eJ)/self.eps)
+
+            self.weakClassifiers.append(wk_clf)
+            self.alphas.append(aJ)
+
+            if(eJ > self.eps):
+                for i in range(0, len(self.ytrain)):
+                    if(self.ytrain[i] != wk_results[i]):
+                        self.weights[i] = self.weights[i] * np.exp(-self.ytrain[i] * aJ * wk_results[i])
             else:
                 break
+
+
 
     def evaluate(self):
         """Return the number of correct and incorrect predictions.
@@ -186,13 +222,21 @@ class Boosting:
                 correct (int): Number of correct predictions.
                 incorrect (int): Number of incorrect predictions.
         """
-        predicts = self.predict(self.Xtrain)
+
+        predictions = self.predict(self.Xtrain)
+
         good = 0
-        for i in range(0,len(self.ytrain)):
-            if(predicts[i] == self.ytrain[i]):
+        bad = 0
+
+        for i in range(0, len(self.ytrain)):
+            if(self.ytrain[i] == predictions[i]):
                 good += 1
 
-        return good,len(self.ytrain)-good
+            else:
+                bad += 1
+
+        return(good, bad)
+
 
     def predict(self, X):
         """Return predictions for a given array of observations.
@@ -206,24 +250,34 @@ class Boosting:
         Returns:
             numpy.array: Predictions, one for each row in X.
         """
-        predicts = []
-        for i in range(0,len(X)):
+        
+        self.predictions = []
+        for i in range(0, len(X)):
             sign = 0.0
-            for j in range(0,len(self.weakClassifiers)):
-                sign += self.weakClassifiers[j].predict(X[i]) * self.alphas[j]
-            if(sign < 0):
-                predicts.append(-1)
+
+            for j in range(0, len(self.weakClassifiers)):
+                sign += self.alphas[j] * self.weakClassifiers[j].predict(X[i])
+
+            if(sign > 0):
+                self.predictions.append(1)
             else:
-                predicts.append(+1)
-        return np.array(predicts)
+                self.predictions.append(-1)
+
+
+        self.predictions = np.array(self.predictions)
+        return self.predictions
+
+
+
+
 
 class HaarFeature:
     """Haar-like features.
 
     Args:
         feat_type (tuple): Feature type {(2, 1), (1, 2), (3, 1), (2, 2)}.
-        position (tuple): (row, col) position of the feature's top left corner.
-        size (tuple): Feature's (height, width)
+        position (tuple): (x, y) position of the feature's top left corner.
+        size (tuple): Feature's (width, height)
 
     Attributes:
         feat_type (tuple): Feature type.
@@ -235,8 +289,7 @@ class HaarFeature:
         self.feat_type = feat_type
         self.position = position
         self.size = size
-        self.px,self.py = position
-        self.sx,self.sy = size
+
     def _create_two_horizontal_feature(self, shape):
         """Create a feature of type (2, 1).
 
@@ -249,11 +302,17 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        img = np.zeros(shape)
-        cv2.rectangle(img, (self.py, self.px), (self.py + self.sy - 1, self.px + self.sx/2 - 1), (255), -1)
-        cv2.rectangle(img, (self.py, self.px + self.sx/2), (self.py + self.sy - 1, self.px + self.sx - 1), (126), -1)
+        row_height = self.size[0] / 2
 
-        return img
+        black_image = np.zeros(shape)
+
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0]), (self.position[1] + self.size[1] - 1, self.position[0] + row_height - 1), (255), -1)
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0] + row_height), (self.position[1] + self.size[1] - 1, self.position[0] + self.size[0] - 1), (126), -1)
+
+        return black_image
+
 
     def _create_two_vertical_feature(self, shape):
         """Create a feature of type (1, 2).
@@ -267,11 +326,17 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        img = np.zeros(shape)
+        column_width = self.size[1] / 2
 
-        cv2.rectangle(img, (self.py, self.px), (self.py + self.sy/2 - 1, self.px + self.sx - 1), (255), -1)
-        cv2.rectangle(img, (self.py + self.sy/2, self.px), (self.py +  self.sy - 1, self.px + self.sx - 1), (126), -1)
-        return img
+        black_image = np.zeros(shape)
+
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0]), (self.position[1] + column_width - 1, self.position[0] + self.size[0] - 1), (255), -1)
+
+        cv2.rectangle(black_image, (self.position[1] + column_width, self.position[0]), (self.position[1] +  self.size[1] - 1, self.position[0] + self.size[0] - 1), (126), -1)
+
+        return black_image
+
 
     def _create_three_horizontal_feature(self, shape):
         """Create a feature of type (3, 1).
@@ -285,12 +350,18 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        img = np.zeros(shape)
-        cv2.rectangle(img, (self.py, self.px), (self.py + self.sy - 1, self.px + self.sx/3 - 1), (255), -1)
-        cv2.rectangle(img, (self.py, self.px + self.sx/3), (self.py + self.sy - 1, self.px + (self.sx/3 * 2) - 1), (126), -1)
-        cv2.rectangle(img, (self.py, self.px + (self.sx/3 * 2)), (self.py + self.sy - 1, self.px + self.sx - 1), (255), -1)
+        row_height = self.size[0] / 3
 
-        return img
+        black_image = np.zeros(shape)
+
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0]), (self.position[1] + self.size[1] - 1, self.position[0] + row_height - 1), (255), -1)
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0] + row_height), (self.position[1] + self.size[1] - 1, self.position[0] + (row_height * 2) - 1), (126), -1)
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0] + (row_height * 2)), (self.position[1] + self.size[1] - 1, self.position[0] + self.size[0] - 1), (255), -1)
+
+        return black_image
 
     def _create_three_vertical_feature(self, shape):
         """Create a feature of type (1, 3).
@@ -304,12 +375,17 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        img = np.zeros(shape)
-        cv2.rectangle(img, (self.py, self.px), (self.py + self.sy/3 - 1, self.px + self.sx - 1), (255), -1)
-        cv2.rectangle(img, (self.py + self.sy/3, self.px), (self.py + (self.sy/3 * 2) - 1, self.px + self.sx - 1), (126), -1)
-        cv2.rectangle(img, (self.py + (self.sy/3 * 2), self.px), (self.py + self.sy - 1, self.px + self.sx - 1), (255), -1)
+        column_width = self.size[1] / 3
 
-        return img
+        black_image = np.zeros(shape)
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0]), (self.position[1] + column_width - 1, self.position[0] + self.size[0] - 1), (255), -1)
+
+        cv2.rectangle(black_image, (self.position[1] + column_width, self.position[0]), (self.position[1] + (column_width * 2) - 1, self.position[0] + self.size[0] - 1), (126), -1)
+
+        cv2.rectangle(black_image, (self.position[1] + (column_width * 2), self.position[0]), (self.position[1] + self.size[1] - 1, self.position[0] + self.size[0] - 1), (255), -1)
+
+        return black_image
 
     def _create_four_square_feature(self, shape):
         """Create a feature of type (2, 2).
@@ -322,13 +398,21 @@ class HaarFeature:
         Returns:
             numpy.array: Image containing a Haar feature. (uint8).
         """
-        img = np.zeros(shape)
-        cv2.rectangle(img, (self.py, self.px), (self.py + self.sy/2 - 1, self.px + self.sx/2 - 1), (126), -1)
-        cv2.rectangle(img, (self.py + self.sy/2, self.px), (self.py + self.sy - 1, self.px + self.sx/2 - 1), (255), -1)
-        cv2.rectangle(img, (self.py, self.px + self.sx/2), (self.py + self.sy/2 - 1, self.px + self.sx - 1), (255), -1)
-        cv2.rectangle(img, (self.py + self.sy/2, self.px + self.sx/2), (self.py + self.sy - 1, self.px + self.sx - 1), (126), -1)
+        row_height = self.size[0] / 2
+        column_width = self.size[1] / 2
 
-        return img
+        black_image = np.zeros(shape)
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0]), (self.position[1] + column_width - 1, self.position[0] + row_height - 1), (126), -1)
+
+        cv2.rectangle(black_image, (self.position[1] + column_width, self.position[0]), (self.position[1] + self.size[1] - 1, self.position[0] + row_height - 1), (255), -1)
+
+        cv2.rectangle(black_image, (self.position[1], self.position[0] + row_height), (self.position[1] + column_width - 1, self.position[0] + self.size[0] - 1), (255), -1)
+
+        cv2.rectangle(black_image, (self.position[1] + column_width, self.position[0] + row_height), (self.position[1] + self.size[1] - 1, self.position[0] + self.size[0] - 1), (126), -1)
+
+        return black_image
+
 
     def preview(self, shape=(24, 24), filename=None):
         """Return an image with a Haar-like feature of a given type.
@@ -338,7 +422,7 @@ class HaarFeature:
         and a gray area (126).
 
         The drawing methods use the class attributes position and size.
-        Keep in mind these are in (row, col) and (height, width) format.
+        Keep in mind these are in (x, y) and (width, height) format.
 
         Args:
             shape (tuple): Array numpy-style shape (rows, cols).
@@ -371,11 +455,22 @@ class HaarFeature:
 
         return X
 
-    def regionSum(self, ii, tl, br):
-        ii = ii.astype('float64')
-        #tl = (tl[0]+1,tl[1]+1)
-        #br = (br[0]+1,br[1]+1)
-        return ii[br[1]][br[0]] - ii[br[1]][tl[0]] - ii[tl[1]][br[0]] + ii[tl[1]][tl[0]]
+    def calc_sum(self, ii, top_left, bottom_right):
+
+        s4 = ii[bottom_right[1]][bottom_right[0]]
+
+        s2_pos = (bottom_right[1], top_left[0])
+        s2 = ii[s2_pos[0]][s2_pos[1]]
+
+        s3_pos = (top_left[1], bottom_right[0])
+        s3 = ii[s3_pos[0]][s3_pos[1]]
+
+        s1 = ii[top_left[1]][top_left[0]]
+
+        whole_sum = s4 - s2 - s3 + s1
+        return whole_sum
+
+
 
     def evaluate(self, ii):
         """Evaluates a feature's score on a given integral image.
@@ -398,42 +493,52 @@ class HaarFeature:
         Returns:
             float: Score value.
         """
-        
-        if self.feat_type == (1, 2):  
-            # two_vertical
-            sumWhite = self.regionSum(ii, (self.py - 1, self.px - 1), (self.py + self.sy/2 - 1, self.px + self.sx - 1))
-            sumGrey = self.regionSum(ii, (self.py + self.sy/2 - 1, self.px - 1), (self.py +  self.sy - 1, self.px + self.sx - 1))
-            return (sumWhite - sumGrey)
 
-        elif self.feat_type == (2, 1):  
-            # two_horizontal
-            sumWhite = self.regionSum(ii, (self.py - 1, self.px - 1), (self.py + self.sy - 1, self.px + self.sx/2 - 1))
-            sumGrey = self.regionSum(ii, (self.py - 1, self.px + self.sx/2 - 1), (self.py + self.sy - 1, self.px + self.sx - 1))
-            return (sumWhite - sumGrey)
+        whole_sum = 0
 
-        elif self.feat_type == (3, 1): 
-            # three_horizontal
-            sumWhite1 = self.regionSum(ii, (self.py - 1, self.px - 1), (self.py + self.sy - 1, self.px + self.sx/3 - 1))
-            sumWhite2 = self.regionSum(ii, (self.py - 1, self.px + (self.sx/3 * 2) - 1), (self.py + self.sy - 1, self.px + self.sx - 1))
-            sumGrey = self.regionSum(ii, (self.py - 1, self.px + self.sx/3 - 1), (self.py + self.sy - 1, self.px + (self.sx/3 * 2) - 1))
-            return (sumWhite1 + sumWhite2 - sumGrey)
+        if self.feat_type == (2, 1):  # two_horizontal
+            row_height = self.size[0] / 2
+            sum_of_white = self.calc_sum(ii, (self.position[1] - 1, self.position[0] - 1), (self.position[1] + self.size[1] - 1, self.position[0] + row_height - 1))
+            sum_of_grey = self.calc_sum(ii, (self.position[1] - 1, self.position[0] + row_height - 1), (self.position[1] + self.size[1] - 1, self.position[0] + self.size[0] - 1))
 
-        elif self.feat_type == (1, 3): 
-            # three_vertical
-            sumWhite1 = self.regionSum(ii, (self.py - 1, self.px - 1), (self.py + self.sy/3  - 1, self.px + self.sx - 1))
-            sumWhite2 = self.regionSum(ii, (self.py + (self.sy/3 * 2) - 1, self.px - 1), (self.py + self.sy - 1, self.px + self.sx - 1))
-            sumGrey = self.regionSum(ii, (self.py + self.sy/3  - 1, self.px - 1), (self.py + (self.sy/3  * 2) - 1, self.px + self.sx - 1))
-            return (sumWhite1 + sumWhite2 - sumGrey)
+            whole_sum = sum_of_white - sum_of_grey
 
-        elif self.feat_type == (2, 2): 
-            # four_square 
-            sumWhite1 = self.regionSum(ii, (self.py + self.sy/2 - 1, self.px - 1), (self.py + self.sy - 1, self.px + self.sx/2 - 1))
-            sumWhite2 = self.regionSum(ii, (self.py - 1, self.px + self.sx/2 - 1), (self.py + self.sy/2 - 1, self.px + self.sx - 1))
-            sumGrey1 = self.regionSum(ii, (self.py - 1, self.px - 1), (self.py + self.sy/2 - 1, self.px + self.sx/2 - 1))
-            sumGrey2 = self.regionSum(ii, (self.py + self.sy/2 - 1, self.px + self.sx/2 - 1), (self.py + self.sy - 1, self.px + self.sx - 1))
-            return (sumWhite1 + sumWhite2 - sumGrey2 - sumGrey1)
+        elif self.feat_type == (1, 2):  # two_vertical
+            column_width = self.size[1] / 2
+            sum_of_white = self.calc_sum(ii, (self.position[1] - 1, self.position[0] - 1), (self.position[1] + column_width - 1, self.position[0] + self.size[0] - 1))
+            sum_of_grey = self.calc_sum(ii, (self.position[1] + column_width - 1, self.position[0] - 1), (self.position[1] +  self.size[1] - 1, self.position[0] + self.size[0] - 1))
 
-        return 0
+            whole_sum = sum_of_white - sum_of_grey
+
+        elif self.feat_type == (3, 1):  # three_horizontal
+            row_height = self.size[0] / 3       
+            sum_of_white1 = self.calc_sum(ii, (self.position[1] - 1, self.position[0] - 1), (self.position[1] + self.size[1] - 1, self.position[0] + row_height - 1))
+            sum_of_grey = self.calc_sum(ii, (self.position[1] - 1, self.position[0] + row_height - 1), (self.position[1] + self.size[1] - 1, self.position[0] + (row_height * 2) - 1))
+            sum_of_white2 = self.calc_sum(ii, (self.position[1] - 1, self.position[0] + (row_height * 2) - 1), (self.position[1] + self.size[1] - 1, self.position[0] + self.size[0] - 1))
+
+            whole_sum = sum_of_white1 + sum_of_white2 - sum_of_grey
+
+        elif self.feat_type == (1, 3):  # three_vertical
+            column_width = self.size[1] / 3
+            sum_of_white1 = self.calc_sum(ii, (self.position[1] - 1, self.position[0] - 1), (self.position[1] + column_width - 1, self.position[0] + self.size[0] - 1))
+            sum_of_grey = self.calc_sum(ii, (self.position[1] + column_width - 1, self.position[0] - 1), (self.position[1] + (column_width * 2) - 1, self.position[0] + self.size[0] - 1))
+            sum_of_white2 = self.calc_sum(ii, (self.position[1] + (column_width * 2) - 1, self.position[0] - 1), (self.position[1] + self.size[1] - 1, self.position[0] + self.size[0] - 1))
+
+            whole_sum = sum_of_white1 + sum_of_white2 - sum_of_grey
+
+        elif self.feat_type == (2, 2):  # four_square
+            row_height = self.size[0] / 2
+            column_width = self.size[1] / 2
+
+            sum_of_grey1 = self.calc_sum(ii, (self.position[1] - 1, self.position[0] - 1), (self.position[1] + column_width - 1, self.position[0] + row_height - 1))
+            sum_of_white1 = self.calc_sum(ii, (self.position[1] + column_width - 1, self.position[0] - 1), (self.position[1] + self.size[1] - 1, self.position[0] + row_height - 1))
+            sum_of_white2 = self.calc_sum(ii, (self.position[1] - 1, self.position[0] + row_height - 1), (self.position[1] + column_width - 1, self.position[0] + self.size[0] - 1))
+            sum_of_grey2 = self.calc_sum(ii, (self.position[1] + column_width - 1, self.position[0] + row_height - 1), (self.position[1] + self.size[1] - 1, self.position[0] + self.size[0] - 1))
+            
+            whole_sum = - sum_of_grey1 + sum_of_white1 + sum_of_white2 - sum_of_grey2
+
+        return whole_sum
+
 
 
 def convert_images_to_integral_images(images):
@@ -446,11 +551,15 @@ def convert_images_to_integral_images(images):
         (list): List of integral images.
     """
 
-    i_img = []
-    for img in images:
-        img = np.cumsum(np.cumsum(img,0), 1)
-        i_img.append(img)
-    return i_img
+    integral_images = []
+
+    for image in images:
+        img = np.cumsum(np.cumsum(image, 0), 1)
+
+        integral_images.append(img)
+
+    return integral_images
+
 
 class ViolaJones:
     """Viola Jones face detection method
@@ -513,22 +622,34 @@ class ViolaJones:
         weights = np.hstack((weights_pos, weights_neg))
 
         print " -- select classifiers --"
-
         for i in range(num_classifiers):
+
             weights_pos /= weights_pos.sum()
             weights_neg /= weights_neg.sum()
-            hj = VJ_Classifier(scores, self.labels, weights)
-            hj.train()
-            self.classifiers.append(hj) 
-            beta = hj.error / (1-hj.error)
+
+            hJ = VJ_Classifier(scores, self.labels, weights)
+            hJ.train()
+            self.classifiers.append(hJ) 
+
+
+            beta = hJ.error / (1-hJ.error)
             alpha = np.log(1/beta)
+
             for i in range(0, len(weights)):
                 ei = 1
-                if(hj.predict(scores[i]) == self.labels[i]):
-                    ei = -1
+                if(hJ.predict(scores[i]) == self.labels[i]):
+                    ei = 0
+
                 weights[i] = weights[i] * (beta**(1-ei))
+
             
             self.alphas.append(alpha)
+
+
+
+            # TODO: Complete the Viola Jones algorithm
+
+            #raise NotImplementedError
 
     def predict(self, images):
         """Return predictions for a given list of images.
@@ -541,30 +662,57 @@ class ViolaJones:
         """
 
         ii = convert_images_to_integral_images(images)
+
         scores = np.zeros((len(ii), len(self.haarFeatures)))
 
+        # Populate the score location for each classifier 'clf' in
+        # self.classifiers.
+
+        # Obtain the Haar feature id from clf.feature
+
+        # Use this id to select the respective feature object from
+        # self.haarFeatures
+
+        # Add the score value to score[x, feature id] calling the feature's
+        # evaluate function. 'x' is each image in 'ii'
+
         for clf in self.classifiers:
-            featureID = clf.feature
-            hf = self.haarFeatures[featureID]
+            feat_id = clf.feature
+            hf = self.haarFeatures[feat_id]
+
             for x, im in enumerate(ii):
-                scores[x, featureID] = hf.evaluate(im)
+                scores[x, feat_id] = hf.evaluate(im)
+
         result = []
 
+        # Append the results for each row in 'scores'. This value is obtained
+        # using the equation for the strong classifier H(x).
+
         threshold = np.array(self.alphas).sum()
+
+        
+
         for x in scores:
-            scoreSum = 0
+            score_sum = 0
+
             i = 0
             for clf in self.classifiers:
-                scoreSum += clf.predict(x) * self.alphas[i]
+                score_sum += clf.predict(x) * self.alphas[i]
                 i += 1
-            if(scoreSum  < threshold*0.5):
-                result.append(-1)
-            else:
+
+            if(score_sum  >= threshold * .5):
                 result.append(1)
+            else:
+                result.append(-1)
+
+
+            #raise NotImplementedError
+
+
 
         return result
 
-    def faceDetection(self, image, filename):
+    def faceDetection(self, image, filename, original_image):
         """Scans for faces in a given image.
 
         Complete this function following the instructions in the problem set
@@ -580,21 +728,48 @@ class ViolaJones:
             None.
         """
 
+        slices = []
+
         img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         x_points = []
         y_points = []
-        slices = []
+
         for x in range(0, img.shape[0] - 24):
             for y in range(0, img.shape[1] - 24):
                 small_slice = img[x:x+24, y:y+24]
-                prediction = self.predict([small_slice])
+                slices.append(small_slice)
+                prediction = self.predict(slices)
+                slices = []
                 if(prediction[0] == 1):
                     x_points.append(x)
                     y_points.append(y)
-                    resized_x,resized_y = (x,y)
-                    #cv2.rectangle(image, (resized_y, resized_x), (resized_y + 24, resized_x + 24), (255, 0, 0))
-        average_point = (int(np.average(x_points)), int(np.average(y_points)))
-        resized_x,resized_y = average_point
-        cv2.rectangle(image, (resized_y, resized_x), (resized_y + 24, resized_x + 24), (0, 255, 0))
 
-        cv2.imwrite("output/{}.png".format(filename), image)
+        average_point = (int(np.average(x_points)), int(np.average(y_points)))
+
+        resized_x = average_point[0]
+        resized_y = average_point[1]
+
+        print((resized_x, resized_y))
+
+        resized_x = int(resized_x * original_image.shape[0] / image.shape[0])
+        resized_y = int(resized_y * original_image.shape[1] / image.shape[1])
+
+        print((resized_x, resized_y))
+
+        resized_width = int(24 * original_image.shape[1] / image.shape[1])
+        resized_height = int(24 * original_image.shape[0] / image.shape[0])
+
+
+
+        cv2.rectangle(original_image, (resized_y, resized_x), (resized_y + 24, resized_x + 24), (255, 0, 0))
+
+        for i in x_points:
+            cv2.rectangle(image, (y_points[i], x_points[i]), (y_points[i] + 24, x_points[i] + 24), (255, 0, 0))
+
+        #cv2.rectangle(image, (average_point[1], average_point[0]), (average_point[1] + 24, average_point[0] + 24), (255, 0, 0))
+        #showImage(image)
+        
+        cv2.imwrite("output/{}.png".format(filename), original_image)
+
+
+

@@ -2,7 +2,7 @@
 import cv2
 import os
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import math
 
 import ps6
@@ -20,6 +20,7 @@ NEG2_DIR = os.path.join(INPUT_DIR, "neg2")
 
 def load_images_from_dir(data_dir, size=(24, 24), ext=".png"):
     imagesFiles = [f for f in os.listdir(data_dir) if f.endswith(ext)]
+    imagesFiles.sort()
     imgs = [np.array(cv2.imread(os.path.join(data_dir, f), 0)) for f in imagesFiles]
     imgs = [cv2.resize(x, size) for x in imgs]
 
@@ -34,6 +35,7 @@ def plot_eigen_faces(eig_vecs, fig_name="", visualize=False):
 
     for i,v in enumerate(eig_vecs):
         sp = fig.add_subplot(r,c,i+1)
+
 
         plt.imshow(v.reshape(32,32).real, cmap='gray')
         sp.set_title('eigenface_%i'%i)
@@ -83,47 +85,107 @@ def part_1a_1b():
     # PCA dimension reduction
     k = 10
     eig_vecs, eig_vals = ps6.pca(X, k)
-
     plot_eigen_faces(eig_vecs.T, "ps6-1-b-1.png")
 
 
 def part_1c():
-    p = 0.5  # Select a split percentage value
-    k = 5  # Select a value for k
+    runk = 1
+    runp = 1
+    if runk:
+        p = 0.5  # Select a split percentage value
+        ks = []
+        accuracy = []
+        for k in range(1,30):
+            size = (32, 32)
+            X, y = ps6.load_images(YALE_FACES_DIR, size)
+            Xtrain, ytrain, Xtest, ytest = ps6.split_dataset(X, y, p)
 
-    size = [32, 32]
-    X, y = ps6.load_images(YALE_FACES_DIR, size)
-    Xtrain, ytrain, Xtest, ytest = ps6.split_dataset(X, y, p)
+            # training
+            mu = ps6.get_mean_face(Xtrain)
+            eig_vecs, eig_vals = ps6.pca(Xtrain, k)
+            Xtrain_proj = np.dot(Xtrain - mu, eig_vecs)
 
-    # training
-    mu = ps6.get_mean_face(Xtrain)
-    eig_vecs, eig_vals = ps6.pca(Xtrain, k)
-    Xtrain_proj = np.dot(Xtrain - mu, eig_vecs)
+            # testing
+            mu = ps6.get_mean_face(Xtest)
+            Xtest_proj = np.dot(Xtest - mu, eig_vecs)
 
-    # testing
-    mu = ps6.get_mean_face(Xtest)
-    Xtest_proj = np.dot(Xtest - mu, eig_vecs)
+            good = 0
+            bad = 0
 
-    good = 0
-    bad = 0
+            for i, obs in enumerate(Xtest_proj):
 
-    for i, obs in enumerate(Xtest_proj):
+                dist = [np.linalg.norm(obs - x) for x in Xtrain_proj]
 
-        dist = [np.linalg.norm(obs - x) for x in Xtrain_proj]
+                idx = np.argmin(dist)
+                y_pred = ytrain[idx]
 
-        idx = np.argmin(dist)
-        y_pred = ytrain[idx]
+                if y_pred == ytest[i]:
+                    good += 1
+                else:
+                    bad += 1
 
-        if y_pred == ytest[i]:
-            good += 1
+            print 'Good predictions = ', good, 'Bad predictions = ', bad
+            ks.append(k)
+            accuracy.append(100 * float(good)/(good + bad))
+            print '{0:.2f}% accuracy'.format(100 * float(good)/(good + bad))
 
-        else:
-            bad += 1
+        plt.figure()
+        plt.ylabel('Accuracy')
+        plt.xlabel('# of PCs')
+        plt.title('Accuracy vs Number of PCs ')
+        plt.plot(ks,accuracy)
+        plt.grid()
+        plt.draw()
+        plt.savefig('./pca_plot.png')
+        #plt.show()
 
-    print 'Good predictions = ', good, 'Bad predictions = ', bad
-    print '{0:.2f}% accuracy'.format(100 * float(good) / (good + bad))
+    if runp:
+        k = 10
+        accuracy = []
+        ps = []
+        for p in np.arange(0.2, 1.0, 0.1):
+            size = (32, 32)
+            X, y = ps6.load_images(YALE_FACES_DIR, size)
+            Xtrain, ytrain, Xtest, ytest = ps6.split_dataset(X, y, p)
 
+            # training
+            mu = ps6.get_mean_face(Xtrain)
+            eig_vecs, eig_vals = ps6.pca(Xtrain, k)
+            Xtrain_proj = np.dot(Xtrain - mu, eig_vecs)
 
+            # testing
+            mu = ps6.get_mean_face(Xtest)
+            Xtest_proj = np.dot(Xtest - mu, eig_vecs)
+
+            good = 0
+            bad = 0
+
+            for i, obs in enumerate(Xtest_proj):
+
+                dist = [np.linalg.norm(obs - x) for x in Xtrain_proj]
+
+                idx = np.argmin(dist)
+                y_pred = ytrain[idx]
+
+                if y_pred == ytest[i]:
+                    good += 1
+                else:
+                    bad += 1
+
+            print 'Good predictions = ', good, 'Bad predictions = ', bad
+            ps.append(p)
+            accuracy.append(100 * float(good)/(good + bad))
+            print '{0:.2f}% accuracy'.format(100 * float(good)/(good + bad))
+
+        plt.figure()
+        plt.ylabel('Accuracy')
+        plt.xlabel('Percentage of data split')
+        plt.title('Accuracy vs data split percentage ')
+        plt.plot(ps,accuracy)
+        plt.grid()
+        plt.draw()
+        plt.savefig('./split_P_plot.png')
+        #plt.show()
 def part_2a():
     y0 = 1
     y1 = 2
@@ -143,14 +205,18 @@ def part_2a():
     y[y0_ids] = 1
     y[y1_ids] = -1
 
-    p = 0.8
+    p = 0.5
     Xtrain, ytrain, Xtest, ytest = ps6.split_dataset(X, y, p)
 
     # Picking random numbers
     rand_y = np.random.choice([-1, 1], (len(ytrain)))
     # TODO: find which of these labels match ytrain and report its accuracy
-    rand_accuracy = None
-    raise NotImplementedError
+    good = 0
+    for i in range(0,len(ytrain)):
+        if(rand_y[i] == ytrain[i]):
+            good += 1
+
+    rand_accuracy = float(good)/len(ytrain) * 100
     print '(Random) Training accuracy: {0:.2f}%'.format(rand_accuracy)
 
     # Using Weak Classifier
@@ -159,8 +225,11 @@ def part_2a():
     wk_clf.train()
     wk_results = [wk_clf.predict(x) for x in Xtrain]
     # TODO: find which of these labels match ytrain and report its accuracy
-    wk_accuracy = None
-    raise NotImplementedError
+    good = 0
+    for i in range(0,len(ytrain)):
+        if(wk_results[i] == ytrain[i]):
+            good += 1
+    wk_accuracy = float(good)/len(ytrain) * 100
     print '(Weak) Training accuracy {0:.2f}%'.format(wk_accuracy)
 
     num_iter = 5
@@ -174,23 +243,33 @@ def part_2a():
     # Picking random numbers
     rand_y = np.random.choice([-1, 1], (len(ytest)))
     # TODO: find which of these labels match ytest and report its accuracy
-    rand_accuracy = None
-    raise NotImplementedError
-    print '(Random) Testing accuracy: {0:.2f}%'.format(rand_accuracy)
+    good = 0
+    for i in range(0,len(ytest)):
+        if(rand_y[i] == ytest[i]):
+            good += 1
+    rand_accuracyt = float(good)/len(ytest) * 100
+    print '(Random) Testing accuracy: {0:.2f}%'.format(rand_accuracyt)
 
     # Using Weak Classifier
     wk_results = [wk_clf.predict(x) for x in Xtest]
     # TODO: find which of these labels match ytest and report its accuracy
-    wk_accuracy = None
-    raise NotImplementedError
-    print '(Weak) Testing accuracy {0:.2f}%'.format(wk_accuracy)
+    good = 0
+    for i in range(0,len(ytest)):
+        if(wk_results[i] == ytest[i]):
+            good += 1
+    wk_accuracyt = float(good)/len(ytest) * 100
+    print '(Weak) Testing accuracy {0:.2f}%'.format(wk_accuracyt)
 
     y_pred = boost.predict(Xtest)
     # TODO: find which of these labels match ytest and report its accuracy
-    boost_accuracy = None
-    raise NotImplementedError
-    print '(Boosting) Testing accuracy {0:.2f}%'.format(boost_accuracy)
-
+    good = 0
+    for i in range(0,len(ytest)):
+        if(y_pred[i] == ytest[i]):
+            good += 1
+    boost_accuracyt = float(good)/len(ytest) * 100
+ 
+    print '(Boosting) Testing accuracy {0:.2f}%'.format(boost_accuracyt)
+    return rand_accuracy,wk_accuracy,boost_accuracy,rand_accuracyt,wk_accuracyt,boost_accuracyt
 
 def part_3a():
     """Complete the remaining parts of this section as instructed in the
@@ -199,15 +278,22 @@ def part_3a():
     feature1 = ps6.HaarFeature((2, 1), (25, 30), (50, 100))
     feature1.preview((200, 200), filename="ps6-3-a-1.png")
 
-    # TODO: Generate and save all required images
-    raise NotImplementedError
+    feature2 = ps6.HaarFeature((1, 2), (10, 25), (50, 150))
+    feature2.preview((200, 200), filename="ps6-3-a-2.png")
 
+    feature3 = ps6.HaarFeature((3, 1), (50, 50), (100, 50))
+    feature3.preview((200, 200), filename="ps6-3-a-3.png")
+
+    feature4 = ps6.HaarFeature((1, 3), (50, 125), (100, 50))
+    feature4.preview((200, 200), filename="ps6-3-a-4.png")
+
+    feature5 = ps6.HaarFeature((2, 2), (50, 25), (100, 150))
+    feature5.preview((200, 200), filename="ps6-3-a-5.png")
 
 def part_4_a_b():
 
     pos = load_images_from_dir(POS_DIR)
     neg = load_images_from_dir(NEG_DIR)
-
     train_pos = pos[:35]
     train_neg = neg[:]
     images = train_pos + train_neg
@@ -221,10 +307,16 @@ def part_4_a_b():
 
     VJ.haarFeatures[VJ.classifiers[0].feature].preview(filename="ps6-4-b-1")
     VJ.haarFeatures[VJ.classifiers[1].feature].preview(filename="ps6-4-b-2")
-
+    VJ.haarFeatures[VJ.classifiers[2].feature].preview(filename="ps6-4-b-3")
+    VJ.haarFeatures[VJ.classifiers[3].feature].preview(filename="ps6-4-b-4")
     predictions = VJ.predict(images)
-    vj_accuracy = None
-    raise NotImplementedError
+
+    good = 0
+    for i in range(0, len(predictions)):
+        if(predictions[i] == labels[i]):
+            good += 1
+
+    vj_accuracy = float(good)/len(predictions) * 100
     print "Prediction accuracy on training: {0:.2f}%".format(vj_accuracy)
 
     neg = load_images_from_dir(NEG2_DIR)
@@ -235,8 +327,12 @@ def part_4_a_b():
     real_labels = np.array(len(test_pos) * [1] + len(test_neg) * [-1])
     predictions = VJ.predict(test_images)
 
-    vj_accuracy = None
-    raise NotImplementedError
+    good = 0
+    for i in range(0, len(predictions)):
+        if(predictions[i] == real_labels[i]):
+            good += 1
+
+    vj_accuracy = float(good)/len(predictions) * 100
     print "Prediction accuracy on testing: {0:.2f}%".format(vj_accuracy)
 
 
@@ -253,14 +349,32 @@ def part_4_c():
     VJ.train(4)
 
     image = cv2.imread(os.path.join(INPUT_DIR, "man.jpeg"), -1)
-    image = cv2.resize(image, (120, 60))
-    VJ.faceDetection(image, filename="ps4-4-c-1")
+    imagerz = cv2.resize(image, (120, 60))
+    VJ.faceDetection(imagerz, filename="ps4-4-c-1")
 
 
 if __name__ == "__main__":
+    print("Running 1a_1b...\n")
     part_1a_1b()
+    print("Running 1c...\n")
     part_1c()
-    part_2a()
+    print("Running 2a...\n")
+    accuracies = [0,0,0,0,0,0]
+    name = ['(Random) Training accuracy','(Weak) Training accuracy','(Boosting) Training accuracy','(Random) Testing accuracy:',
+            '(Weak) Testing accuracy','(Boosting) Testing accuracy']
+
+    for i in range(1,6):
+        print('Iteration:',i)
+        ret = part_2a()
+        for j in range(0,len(accuracies)):
+            accuracies[j] = (accuracies[j] + ret[j])/float(2.0)
+    for i in range(0,len(name)):
+        print(name[i],"{0:.2f} %".format(accuracies[i]))
+
+    print("Running 3a...\n")
     part_3a()
+    
+    print("Running 4a_b...\n")
     part_4_a_b()
+    print("Running 4c..\n")
     part_4_c()
